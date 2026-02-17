@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم المسؤول - DEM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Tajawal', 'sans-serif'] } } } }</script>
+</head>
+<body class="bg-gray-50 min-h-screen p-8">
+
+    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <div class="bg-white p-6 rounded-xl shadow">
+            <h2 class="text-xl font-bold mb-4 text-blue-600">إدارة الخدمات</h2>
+            
+            <div class="flex gap-2 mb-6">
+                <input type="text" id="newService" placeholder="اسم الخدمة الجديدة..." class="flex-1 border p-2 rounded">
+                <button onclick="addService()" class="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">إضافة</button>
+            </div>
+
+            <ul id="servicesList" class="space-y-2">
+                <li class="text-gray-500">جاري التحميل...</li>
+            </ul>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow">
+            <h2 class="text-xl font-bold mb-4 text-green-600">الملاحظات الواردة</h2>
+            <div id="feedbackList" class="space-y-4 max-h-[600px] overflow-y-auto">
+                <div class="text-gray-500">جاري التحميل...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 🔴 CONFIGURATION 🔴
+        const WORKER_URL = "https://your-worker-name.your-subdomain.workers.dev";
+        const ADMIN_PASS = "admin"; // Must match the password in worker.js
+
+        const headers = { 
+            'Content-Type': 'application/json',
+            'x-admin-password': ADMIN_PASS 
+        };
+
+        async function fetchServices() {
+            const res = await fetch(`${WORKER_URL}/services`);
+            const data = await res.json();
+            const list = document.getElementById('servicesList');
+            list.innerHTML = '';
+            data.forEach(s => {
+                list.innerHTML += `
+                <li class="flex justify-between items-center bg-gray-50 p-3 rounded border">
+                    <span>${s.name}</span>
+                    <button onclick="deleteService(${s.id})" class="text-red-500 text-sm hover:underline">حذف</button>
+                </li>`;
+            });
+        }
+
+        async function addService() {
+            const input = document.getElementById('newService');
+            if(!input.value) return;
+            
+            await fetch(`${WORKER_URL}/admin/services`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ name: input.value })
+            });
+            input.value = '';
+            fetchServices();
+        }
+
+        async function deleteService(id) {
+            if(!confirm('هل أنت متأكد من الحذف؟')) return;
+            await fetch(`${WORKER_URL}/admin/services`, {
+                method: 'DELETE',
+                headers: headers,
+                body: JSON.stringify({ id })
+            });
+            fetchServices();
+        }
+
+        async function fetchFeedback() {
+            const res = await fetch(`${WORKER_URL}/admin/feedback`, { headers: headers });
+            const data = await res.json();
+            const list = document.getElementById('feedbackList');
+            list.innerHTML = '';
+            
+            if(data.length === 0) {
+                list.innerHTML = '<p class="text-gray-400">لا توجد ملاحظات حتى الآن</p>';
+                return;
+            }
+
+            data.forEach(item => {
+                list.innerHTML += `
+                <div class="border p-4 rounded bg-gray-50">
+                    <div class="flex justify-between text-sm text-gray-500 mb-2">
+                        <span class="font-bold text-blue-600">${item.service}</span>
+                        <span>${new Date(item.created_at).toLocaleDateString('ar-EG')}</span>
+                    </div>
+                    <p class="text-gray-800">${item.message}</p>
+                </div>`;
+            });
+        }
+
+        // Initial Load
+        fetchServices();
+        fetchFeedback();
+    </script>
+</body>
+</html>
