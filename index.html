@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة الملاحظات DEM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Tajawal', 'sans-serif'] }, colors: { brand: '#2563eb' } } } }
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div id="introModal" class="fixed inset-0 bg-brand/95 z-50 flex flex-col items-center justify-center text-center p-6 transition-opacity duration-500">
+        <div class="max-w-lg text-white space-y-6">
+            <h1 class="text-4xl font-extrabold mb-4">رأيك يصنع الفرق!</h1>
+            <p class="text-xl opacity-90 leading-relaxed">
+                في DEM، نسعى دوماً للتميز. ملاحظاتك ليست مجرد كلمات، بل هي حجر الأساس لتطوير بيئة العمل. 
+                <br>ساعدنا لنصبح أفضل.
+            </p>
+            <button onclick="closeModal()" class="mt-8 bg-white text-brand font-bold py-3 px-8 rounded-full text-lg shadow-lg hover:bg-gray-100 hover:scale-105 transition transform">
+                ابدأ بإرسال ملاحظة
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden relative z-10">
+        <div class="bg-brand p-6 text-center">
+            <h1 class="text-white text-2xl font-bold">نظام الملاحظات DEM</h1>
+            <p class="text-blue-100 mt-2 text-sm">أبلغ عن خطأ أو قدم اقتراحاً</p>
+        </div>
+
+        <form id="feedbackForm" class="p-6 space-y-6">
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">اختر الخدمة</label>
+                <div class="relative">
+                    <select id="service" required class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-brand">
+                        <option value="" disabled selected>جاري تحميل الخدمات...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-bold mb-2">التفاصيل</label>
+                <textarea id="message" rows="5" required placeholder="اكتب تفاصيل الملاحظة هنا..." class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-brand"></textarea>
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-brand hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
+                إرسال الملاحظة
+            </button>
+            <div id="statusMessage" class="hidden text-center p-3 rounded-lg text-sm font-bold"></div>
+        </form>
+    </div>
+
+    <script>
+        // 🔴 PUT YOUR WORKER URL HERE 🔴
+        const WORKER_URL = "https://your-worker-name.your-subdomain.workers.dev"; 
+
+        // Close Modal Animation
+        function closeModal() {
+            const modal = document.getElementById('introModal');
+            modal.style.opacity = '0';
+            setTimeout(() => modal.remove(), 500);
+        }
+
+        // Load Services on Start
+        async function loadServices() {
+            const select = document.getElementById('service');
+            try {
+                const res = await fetch(`${WORKER_URL}/services`);
+                const services = await res.json();
+                select.innerHTML = '<option value="" disabled selected>-- اختر الخدمة --</option>';
+                services.forEach(s => {
+                    select.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+                });
+            } catch (e) {
+                select.innerHTML = '<option>فشل تحميل الخدمات</option>';
+            }
+        }
+
+        // Handle Submission
+        document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const status = document.getElementById('statusMessage');
+            
+            btn.disabled = true;
+            btn.textContent = 'جاري الإرسال...';
+            
+            try {
+                const res = await fetch(`${WORKER_URL}/feedback`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        service: document.getElementById('service').value,
+                        message: document.getElementById('message').value
+                    })
+                });
+                
+                if(res.ok) {
+                    status.textContent = "تم الإرسال بنجاح!";
+                    status.className = "block bg-green-100 text-green-700 p-3 rounded-lg mt-4";
+                    document.getElementById('feedbackForm').reset();
+                } else {
+                    throw new Error();
+                }
+            } catch (err) {
+                status.textContent = "حدث خطأ!";
+                status.className = "block bg-red-100 text-red-700 p-3 rounded-lg mt-4";
+            }
+            btn.disabled = false;
+            btn.textContent = 'إرسال الملاحظة';
+        });
+
+        loadServices();
+    </script>
+</body>
+</html>
